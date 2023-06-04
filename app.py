@@ -2,11 +2,19 @@ import streamlit as st
 import pickle
 import pandas as pd
 import requests
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+# Set up session state
+class SessionState:
+    def __init__(self):
+        self.username = None
+
+session_state = SessionState()
 
 def fetch_poster(movie_id):
     response = requests.get('https://api.themoviedb.org/3/movie/{}?api_key=388e934d9b3d581e339633ceab2d83bb&language=en-US'.format(movie_id))
     data = response.json()
-    print(data)
     return "https://image.tmdb.org/t/p/w500/" + data['poster_path']
 
 def recommend(movie):
@@ -34,7 +42,18 @@ similarity = pickle.load(open('similarity.pkl', 'rb'))
 
 st.title("Movie Recommender System")
 
-selected_movie_name = st.selectbox('How would you like to get contacted', movies_list)
+if st.button('Sign in with Google'):
+    # Get user token
+    token = st.text_input('Enter your Google Sign-In token:')
+    if token:
+        try:
+            id_info = id_token.verify_oauth2_token(token, google_requests.Request(), '839753753062-5i6iaceiphg5jd92f6bk9fhmmip3a43g.apps.googleusercontent.com')
+            session_state.username = id_info['email']
+            st.success(f'Successfully signed in as {session_state.username}')
+        except Exception as e:
+            st.error('Authentication failed. Please try again.')
+
+selected_movie_name = st.selectbox('Select a movie:', movies_list)
 
 if st.button('Recommend'):
     names, posters = recommend(selected_movie_name)
